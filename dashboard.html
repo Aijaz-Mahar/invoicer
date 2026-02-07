@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eInvoicer - MultiVendor Dashboard</title>
+    <style>
+        :root { --primary: #2c3e50; --secondary: #34495e; --accent: #3498db; --text-light: #ecf0f1; --danger: #e74c3c; --success: #27ae60; --warning: #f39c12; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f4f7f6; height: 100vh; overflow: hidden; }
+        .hidden { display: none !important; }
+
+        /* AUTH & MODAL STYLES */
+        #auth-container, .modal-overlay { display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; background: rgba(0,0,0,0.5); z-index: 2000; }
+        .auth-card, .modal-card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 350px; text-align: center; }
+        
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        .btn-primary { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .btn-secondary { width: 100%; padding: 12px; background: #95a5a6; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 5px; }
+
+        /* DASHBOARD LAYOUT */
+        #main-dashboard { display: grid; grid-template-columns: 250px 1fr; grid-template-rows: 60px 1fr 40px; height: 100vh; transition: 0.3s; }
+        
+        /* Layout when sidebar is toggled off */
+        #main-dashboard.sidebar-closed { grid-template-columns: 0px 1fr; }
+
+        header { grid-column: 1 / -1; background: var(--primary); color: white; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 1001; }
+        
+        /* TOGGLE BUTTON */
+        .menu-toggle { font-size: 24px; cursor: pointer; margin-right: 15px; color: white; background: none; border: none; }
+
+      aside { 
+    background: var(--secondary); 
+    color: white; 
+    padding: 0; /* Changed from 20px 0 to 0 */
+    display: flex; 
+    flex-direction: column; 
+    transition: 0.3s; 
+    overflow-y: auto; 
+    z-index: 1000; 
+}
+        #main-dashboard.sidebar-closed aside { transform: translateX(-250px); }
+
+      .logo-container { 
+    width: 100px; /* Slightly bigger */
+    height: 100px; 
+    border-radius: 50%; 
+    border: 3px solid var(--accent); 
+    overflow: hidden; 
+    margin: 20px auto; /* Gives space above the menu */
+    background: white; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center;
+    flex-shrink: 0; /* Prevents logo from squishing */
+}
+        .logo-container img { width: 100%; height: 100%; object-fit: cover; }
+
+        aside ul { list-style: none; padding: 0; width: 100%; margin: 0; }
+        aside li { padding: 15px 25px; cursor: pointer; transition: 0.3s; border-bottom: 1px solid #ffffff10; }
+        aside li:hover { background: var(--accent); }
+
+        /* SUBMENU */
+        .submenu { background: #2c3e50; max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .submenu li { padding-left: 45px; font-size: 14px; background: #243342; }
+        .submenu.open { max-height: 200px; }
+
+        .sidebar-footer { margin-top: auto; padding: 10px; }
+        .btn-link { color: #bdc3c7; background: none; border: none; cursor: pointer; font-size: 13px; text-decoration: underline; }
+
+        main { padding: 20px; overflow-y: auto; }
+        footer { grid-column: 1 / -1; background: #ddd; text-align: center; line-height: 40px; font-size: 12px; color: #666; }
+        .user-badge { font-size: 12px; background: #1abc9c; padding: 5px 10px; border-radius: 20px; }
+
+        /* SCORECARD STYLES */
+        .biz-panel { background: var(--primary); color: white; padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px; }
+        .biz-panel h1 { margin: 0; font-size: 1.8em; text-transform: uppercase; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-top: 4px solid var(--accent); }
+        .stat-card h4 { margin: 0; color: #7f8c8d; font-size: 0.85em; text-transform: uppercase; }
+        .stat-card .value { font-size: 1.5em; font-weight: bold; color: var(--primary); margin-top: 10px; display: block; }
+
+        /* MOBILE RESPONSIVENESS */
+        @media (max-width: 768px) {
+            #main-dashboard { grid-template-columns: 1fr; }
+            aside { position: fixed; top: 60px; left: -250px; height: calc(100vh - 100px); width: 250px; }
+            #main-dashboard.sidebar-open aside { left: 0; }
+            #main-dashboard.sidebar-open main { opacity: 0.3; pointer-events: none; }
+            .user-info span:not(.user-badge) { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="auth-container">
+    <div class="auth-card">
+        <h1>eInvoicer</h1>
+        <input type="email" id="l_email" placeholder="Email">
+        <input type="password" id="l_pass" placeholder="Password">
+        <button class="btn-primary" onclick="doLogin()">Login</button>
+        <p id="msg" style="color: red; font-size: 14px;"></p>
+    </div>
+</div>
+
+<div id="pwd-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+        <h3 data-key="changePass">Change Password</h3>
+        <input type="password" id="oldPass" placeholder="Old Password">
+        <input type="password" id="newPass" placeholder="New Password">
+        <button id="savePassBtn" class="btn-primary" onclick="savePassword()" data-key="updateBtn">Update</button>
+        <button class="btn-secondary" onclick="closePwdModal()" data-key="cancelBtn">Cancel</button>
+        <p id="pwd-msg" style="font-size: 12px; margin-top: 10px;"></p>
+    </div>
+</div>
+
+<div id="main-dashboard" class="hidden">
+    <header>
+        <div style="display: flex; align-items: center;">
+            <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+            <div style="font-size: 18px; font-weight: bold;">eInvoicer</div>
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <select id="lang-switch" onchange="applyLanguage(this.value)" style="background: transparent; color: white; border: 1px solid #555; padding: 5px; cursor: pointer; font-size: 12px;">
+                <option value="en" style="color: black;">ENG</option>
+                <option value="ur" style="color: black;">اردو</option>
+            </select>
+            <div class="user-info">
+                <span class="user-badge">
+                    <span data-key="idLabel">ID</span>: <span id="display-userid">--</span>
+                </span>
+                <span style="margin-left: 5px;">
+                    <span data-key="welcome">Welcome</span>, <span id="display-username">User</span>
+                </span>
+                <button onclick="logout()" data-key="logout" style="padding: 5px 8px; background: var(--danger); color:white; border:none; margin-left: 10px; border-radius: 5px; cursor:pointer; font-size: 12px;">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <aside id="sidebar">
+        <div id="logo-wrapper" class="logo-container hidden">
+            <img id="user-logo" src="" alt="Business Logo">
+        </div>
+
+        <ul>
+            <li onclick="handleNav('home')" data-key="navHome">🏠 Dashboard</li>
+            <li onclick="handleNav('create')" data-key="navCreate">➕ Create Invoice</li>
+            <li onclick="handleNav('view-all')" data-key="navView">📄 View All Invoices</li>
+            <li onclick="handleNav('update')" data-key="navEdit">✏️ Edit or Delete</li>
+            <li onclick="handleNav('report')" data-key="navReports">📊 Reports</li>
+            
+            <li onclick="toggleMenu('clients-menu')" data-key="navClients">👥 Clients ▾</li>
+            <ul id="clients-menu" class="submenu">
+                <li onclick="handleNav('add-client')" data-key="navAddClient">👤 Add Client</li>
+                <li onclick="handleNav('view-clients')" data-key="navClientList">📋 Client List</li>
+            </ul>
+
+            <li onclick="toggleMenu('accounts-menu')" data-key="navAccounts">💳 Accounts ▾</li>
+            <ul id="accounts-menu" class="submenu">
+                <li onclick="handleNav('add-payment')" data-key="navAddPay">📥 Add Payments</li>
+                <li onclick="handleNav('client-statement')" data-key="navStatement">📜 Client Statement</li>
+            </ul>
+             <li onclick="toggleMenu('inventory-menu')" data-key="navInventory">📦 Inventory & Items ▾</li>
+<ul id="inventory-menu" class="submenu">
+    <li onclick="handleNav('add-item')" data-key="navAddItem">➕ Add New Item</li>
+    <li onclick="handleNav('view-items')" data-key="navItemList">📋 Manage Items</li>
+</ul>
+                       
+            <li onclick="toggleMenu('settings-menu')" data-key="navSettings">⚙️ Settings ▾</li>
+            <ul id="settings-menu" class="submenu">
+                <li onclick="handleNav('biz-settings')" data-key="navBizSet">🏢 Business Setting</li>
+                <li onclick="handleNav('tax-settings')" data-key="navTaxSet">💰 Tax Setting</li>
+                <li onclick="handleNav('currency-settings')" data-key="navCurrSet">💱 Set Currency</li>
+            </ul>
+        </ul>
+
+        <div class="sidebar-footer">
+            <button class="btn-link" onclick="openPwdModal()" data-key="navChangePwd">Change Password</button>
+        </div>
+    </aside>
+
+    <main id="content-area">
+        <div id="welcome-msg">
+            <div class="biz-panel">
+                <h1 id="display-bizname">BUSINESS NAME</h1>
+                <p data-key="overview">Business Management Overview</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card card-inv">
+                    <h4 data-key="statInv">Total Invoices</h4>
+                    <span class="value" id="stat-inv">0</span>
+                </div>
+                <div class="stat-card card-cli">
+                    <h4 data-key="statCli">Total Clients</h4>
+                    <span class="value" id="stat-cli">0</span>
+                </div>
+                <div class="stat-card card-amt">
+                    <h4 data-key="statAmt">Total Amount</h4>
+                    <span class="value" id="stat-amt">0.00</span>
+                </div>
+                <div class="stat-card card-tax">
+                    <h4 data-key="statTax">Total Tax</h4>
+                    <span class="value" id="stat-tax">0.00</span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="module-container" class="hidden">
+            <iframe id="content-frame" src="" style="width: 100%; height: 82vh; border: none; border-radius: 8px; background: white;"></iframe>
+        </div>
+    </main>
+
+    <footer>Copyrights © <span id="year"></span> eInvoicer</footer>
+</div>
+
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbwpyyuTtbSv_2udttbXog8oUfq_vgFvr-y7DggVO-WXYkR4APnpB_0BS6TpSZLdnBrN/exec";
+
+    document.getElementById('year').innerText = new Date().getFullYear();
+
+    function toggleSidebar() {
+        const dashboard = document.getElementById('main-dashboard');
+        if (window.innerWidth <= 768) {
+            dashboard.classList.toggle('sidebar-open');
+        } else {
+            dashboard.classList.toggle('sidebar-closed');
+        }
+    }
+
+    function handleNav(id) {
+        if (window.innerWidth <= 768) {
+            document.getElementById('main-dashboard').classList.remove('sidebar-open');
+        }
+        
+        if(id === 'home') goToDashboard();
+        else showSection(id);
+    }
+
+    const dashboardTranslations = {
+        en: {
+            idLabel: "ID", welcome: "Welcome", logout: "Logout",
+            navHome: "🏠 Dashboard", navCreate: "➕ Create Invoice",
+            navView: "📄 View All Invoices", navEdit: "✏️ Edit or Delete",
+            navReports: "📊 Reports", navClients: "👥 Clients ▾",
+            navAddClient: "👤 Add Client", navClientList: "📋 Client List",
+            navAccounts: "💳 Accounts ▾", navAddPay: "📥 Add Payments",
+            navStatement: "📜 Client Statement",
+            navSettings: "⚙️ Settings ▾", navBizSet: "🏢 Business Setting",
+            navTaxSet: "💰 Tax Setting", navCurrSet: "💱 Set Currency",
+            navChangePwd: "Change Password", overview: "Business Management Overview",
+            statInv: "Total Invoices", statCli: "Total Clients",
+            statAmt: "Total Amount", statTax: "Total Tax",
+            changePass: "Change Password", updateBtn: "Update", cancelBtn: "Cancel",
+          navInventory: "📦 Inventory & Items ▾",
+        navAddItem: "➕ Add New Item",
+        navItemList: "📋 Manage Items",
+        },
+        ur: {
+            idLabel: "شناخت", welcome: "خوش آمدید", logout: "لاگ آؤٹ",
+            navHome: "🏠 ڈیش بورڈ", navCreate: "➕ انوائس بنائیں",
+            navView: "📄 تمام انوائسز", navEdit: "✏️ ترمیم یا حذف",
+            navReports: "📊 رپورٹس", navClients: "👥 کلائنٹس ▾",
+            navAddClient: "👤 کلائنٹ شامل کریں", navClientList: "📋 کلائنٹ کی فہرست",
+            navAccounts: "💳 اکاؤنٹس ▾", navAddPay: "📥 رقم وصول کریں",
+            navStatement: "📜 کھاتہ کی تفصیل",
+            navSettings: "⚙️ سیٹنگز ▾", navBizSet: "🏢 بزنس سیٹنگ",
+            navTaxSet: "💰 ٹیکس سیٹنگ", navCurrSet: "💱 کرنسی سیٹ کریں",
+            navChangePwd: "پاس ورڈ تبدیل کریں", overview: "کاروباری نظم و ضبط کا جائزہ",
+            statInv: "کل انوائسز", statCli: "کل کلائنٹس",
+            statAmt: "کل رقم", statTax: "کل ٹیکس",
+            changePass: "پاس ورڈ تبدیل کریں", updateBtn: "اپ ڈیٹ", cancelBtn: "کینسل",
+          navInventory: "📦 انوینٹری اور اشیاء ▾",
+        navAddItem: "➕ نئی چیز شامل کریں",
+        navItemList: "📋 فہرست دیکھیں",
+        }
+    
+    };
+
+    function applyLanguage(lang) {
+        const t = dashboardTranslations[lang];
+        if (!t) return;
+        document.querySelectorAll('[data-key]').forEach(el => {
+            const key = el.getAttribute('data-key');
+            if (t[key]) el.innerText = t[key];
+        });
+        if (lang === 'ur') {
+            document.body.style.direction = 'rtl';
+            document.querySelector('aside').style.textAlign = 'right';
+        } else {
+            document.body.style.direction = 'ltr';
+            document.querySelector('aside').style.textAlign = 'left';
+        }
+        localStorage.setItem("dashboardLang", lang);
+    }
+
+    function toggleMenu(id) {
+        const targetMenu = document.getElementById(id);
+        const isOpen = targetMenu.classList.contains('open');
+        document.querySelectorAll('.submenu').forEach(menu => menu.classList.remove('open'));
+        if (!isOpen) targetMenu.classList.add('open');
+    }
+
+    function openPwdModal() { document.getElementById('pwd-modal').classList.remove('hidden'); }
+    function closePwdModal() { 
+        document.getElementById('pwd-modal').classList.add('hidden');
+        document.getElementById('oldPass').value = '';
+        document.getElementById('newPass').value = '';
+    }
+
+    async function doLogin() {
+        const email = document.getElementById("l_email").value;
+        const pass = document.getElementById("l_pass").value;
+        const msg = document.getElementById("msg");
+        msg.innerText = "Checking...";
+        try {
+            const response = await fetch(`${API_URL}?action=login&email=${encodeURIComponent(email)}&password=${encodeURIComponent(pass)}`);
+            const result = await response.json();
+            if (result.status === "Success") {
+                localStorage.setItem("user", JSON.stringify(result));
+                setupDashboard(result);
+            } else { msg.innerText = "❌ Invalid Credentials"; }
+        } catch (e) { msg.innerText = "❌ Connection Error"; }
+    }
+
+  function setupDashboard(user) {
+    document.getElementById("auth-container").classList.add("hidden");
+    document.getElementById("main-dashboard").classList.remove("hidden");
+    document.getElementById("display-userid").innerText = user.id;
+    document.getElementById("display-username").innerText = user.name;
+    document.getElementById("display-bizname").innerText = user.business;
+
+    // --- LOGO FIX ---
+    const logoImg = document.getElementById("user-logo");
+    const logoWrapper = document.getElementById("logo-wrapper");
+
+    if (user.logo && user.logo.length > 50) { 
+        logoImg.src = user.logo;
+        // Force the wrapper to show by removing hidden and setting display block
+        logoWrapper.classList.remove("hidden");
+        logoWrapper.style.display = "flex"; 
+        console.log("Logo detected and applied to dashboard.");
+    } else {
+        console.log("No logo found in user object.");
+        logoWrapper.classList.add("hidden");
+    }
+    // ----------------
+    
+    loadDashboardStats();
+}
+    async function loadDashboardStats() {
+        const user = JSON.parse(localStorage.getItem("user"));
+        if (!user || !user.sheetId) return;
+        try {
+            const [invRes, cliRes] = await Promise.all([
+                fetch(`${API_URL}?action=getInvoices&sheetId=${user.sheetId}`),
+                fetch(`${API_URL}?action=getClients&sheetId=${user.sheetId}`)
+            ]);
+            const invoices = await invRes.json();
+            const clients = await cliRes.json();
+            if (!Array.isArray(invoices)) return;
+            let totalAmt = 0, totalTax = 0;
+            invoices.forEach(inv => {
+                totalAmt += parseFloat(inv.total) || 0;
+                totalTax += parseFloat(inv.taxAmount) || 0;
+            });
+            document.getElementById("stat-inv").innerText = invoices.length;
+            document.getElementById("stat-cli").innerText = Array.isArray(clients) ? clients.length : 0;
+            document.getElementById("stat-amt").innerText = totalAmt.toFixed(2);
+            document.getElementById("stat-tax").innerText = totalTax.toFixed(2);
+        } catch (e) { console.error("Stats Error:", e); }
+    }
+
+    async function savePassword() {
+        const oldPass = document.getElementById("oldPass").value;
+        const newPass = document.getElementById("newPass").value;
+        const user = JSON.parse(localStorage.getItem("user"));
+        const saveBtn = document.getElementById("savePassBtn");
+        if (!oldPass || !newPass) { alert("Please fill fields."); return; }
+        saveBtn.innerText = "⏳ Updating...";
+        saveBtn.disabled = true;
+        try {
+            await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "changePassword", userId: user.id, oldPass: oldPass, newPass: newPass }) });
+            alert("✅ Success! Please login again.");
+            logout();
+        } catch (err) { alert("✅ Update request sent."); logout(); }
+    }
+
+    function goToDashboard() {
+        document.getElementById('module-container').classList.add('hidden');
+        document.getElementById('content-frame').src = "";
+        document.getElementById('welcome-msg').classList.remove('hidden');
+        loadDashboardStats();
+    }
+
+    function showSection(id) {
+        document.getElementById('welcome-msg').classList.add('hidden');
+        document.getElementById('module-container').classList.remove('hidden');
+        const routes = { 
+            'create': 'invoice-form.html', 
+            'view-all': 'view-all.html', 
+            'update': 'update.html', 
+            'report': 'reports.html', 
+            'add-client': 'add-client.html', 
+            'view-clients': 'view-clients.html', 
+            'add-payment': 'payment.html',
+            'client-statement': 'client-statement.html',
+            // --- NEW ROUTES ---
+        'add-item': 'add-item.html',
+        'view-items': 'view-items.html',
+            'biz-settings': 'business-settings.html', 
+            'tax-settings': 'tax-settings.html', 
+            'currency-settings': 'currency-settings.html' 
+        };
+        document.getElementById('content-frame').src = routes[id] || "";
+    }
+
+    function logout() { localStorage.removeItem("user"); location.reload(); }
+
+    window.onload = () => {
+        const savedUser = localStorage.getItem("user");
+        if (savedUser) setupDashboard(JSON.parse(savedUser));
+        const savedLang = localStorage.getItem("dashboardLang") || "en";
+        document.getElementById('lang-switch').value = savedLang;
+        applyLanguage(savedLang);
+    };
+</script>
+</body>
+</html>

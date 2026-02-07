@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Items & Services</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap');
+        
+        :root { --primary: #2c3e50; --danger: #e74c3c; --accent: #3498db; --warning: #f39c12; --success: #27ae60; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 15px; background: #f9f9f9; margin: 0; }
+        body.rtl-mode { direction: rtl; font-family: 'Noto Nastaliq Urdu', serif; }
+
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 850px; margin: auto; }
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        
+        input[type="text"] { flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th { background: var(--primary); color: white; padding: 12px; text-align: left; }
+        body.rtl-mode th { text-align: right; }
+        td { padding: 12px; border-bottom: 1px solid #eee; }
+
+        .btn { border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; color: white; margin: 2px; }
+        .btn-edit { background: var(--warning); }
+        .btn-del { background: var(--danger); }
+        
+        /* MODAL STYLES */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 350px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-content h3 { margin-top: 0; }
+        .modal-content label { display: block; margin: 10px 0 5px; font-weight: bold; font-size: 13px; }
+        .modal-content input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .modal-footer { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
+        
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-row">
+        <h2 data-key="title">Manage Items & Services</h2>
+        <input type="text" id="searchBox" placeholder="Search..." data-placeholder="phSearch" onkeyup="filterTable()">
+    </div>
+
+    <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th data-key="thNo">S.No</th>
+                    <th data-key="thItem">Item / Service</th>
+                    <th data-key="thPrice">Price</th>
+                    <th data-key="thAction">Action</th>
+                </tr>
+            </thead>
+            <tbody id="itemsBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <h3 data-key="editTitle">Edit Item</h3>
+        <label data-key="thItem">Item Name</label>
+        <input type="text" id="editName">
+        
+        <label data-key="thPrice">Price</label>
+        <input type="number" id="editPrice" step="0.01">
+        
+        <div class="modal-footer">
+            <button class="btn btn-edit" style="background:var(--success); padding: 10px 20px;" onclick="saveEdit()" data-key="btnSave">Save</button>
+            <button class="btn btn-del" style="background:#95a5a6; padding: 10px 20px;" onclick="closeModal()" data-key="btnCancel">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbwpyyuTtbSv_2udttbXog8oUfq_vgFvr-y7DggVO-WXYkR4APnpB_0BS6TpSZLdnBrN/exec";
+    const user = JSON.parse(localStorage.getItem("user"));
+    let allItems = [];
+    let currentEditId = null;
+
+    const i18n = {
+        en: {
+            title: "Manage Items & Services", phSearch: "Search...",
+            thNo: "S.No", thItem: "Item / Service", thPrice: "Price", thAction: "Action",
+            btnEdit: "Edit", btnDel: "Delete", editTitle: "Edit Item",
+            btnSave: "Update", btnCancel: "Cancel", confirmDel: "Are you sure?"
+        },
+        ur: {
+            title: "اشیاء کی فہرست", phSearch: "تلاش کریں...",
+            thNo: "نمبر", thItem: "تفصیل", thPrice: "قیمت", thAction: "ایکشن",
+            btnEdit: "ایڈٹ", btnDel: "ختم کریں", editTitle: "تبدیلی کریں",
+            btnSave: "اپ ڈیٹ", btnCancel: "کینسل", confirmDel: "کیا آپ واقعی ختم کرنا چاہتے ہیں؟"
+        }
+    };
+
+    window.onload = () => { applyLanguage(); fetchItems(); };
+
+    function applyLanguage() {
+        const lang = localStorage.getItem("dashboardLang") || "en";
+        const t = i18n[lang];
+        document.querySelectorAll('[data-key]').forEach(el => {
+            const key = el.getAttribute('data-key');
+            if (t[key]) el.innerText = t[key];
+        });
+        if (lang === 'ur') document.body.classList.add('rtl-mode');
+    }
+
+    async function fetchItems() {
+        const response = await fetch(`${API_URL}?action=getItems&sheetId=${user.sheetId}`);
+        allItems = await response.json();
+        renderTable();
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById("itemsBody");
+        const lang = localStorage.getItem("dashboardLang") || "en";
+        tbody.innerHTML = "";
+        allItems.forEach((item, index) => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${item.name}</td>
+                <td>${parseFloat(item.price).toFixed(2)}</td>
+                <td>
+                    <button class="btn btn-edit" onclick="openEdit('${item.id}')">${i18n[lang].btnEdit}</button>
+                    <button class="btn btn-del" onclick="deleteItem('${item.id}', this)">${i18n[lang].btnDel}</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function openEdit(id) {
+        const item = allItems.find(i => i.id === id);
+        if(!item) return;
+        currentEditId = id;
+        document.getElementById("editName").value = item.name;
+        document.getElementById("editPrice").value = item.price;
+        document.getElementById("editModal").style.display = "flex";
+    }
+
+    function closeModal() { document.getElementById("editModal").style.display = "none"; }
+
+    async function saveEdit() {
+        const payload = {
+            action: "updateItem", // You need to add this to code.gs
+            sheetId: user.sheetId,
+            itemId: currentEditId,
+            itemName: document.getElementById("editName").value,
+            price: document.getElementById("editPrice").value
+        };
+        closeModal();
+        await fetch(API_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(payload) });
+        setTimeout(fetchItems, 1500);
+    }
+
+    async function deleteItem(id, btn) {
+        const lang = localStorage.getItem("dashboardLang") || "en";
+        if (!confirm(i18n[lang].confirmDel)) return;
+        btn.closest('tr').style.opacity = "0.3";
+        await fetch(API_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "deleteItem", sheetId: user.sheetId, itemId: id }) });
+        setTimeout(fetchItems, 1500);
+    }
+
+    function filterTable() {
+        const q = document.getElementById("searchBox").value.toLowerCase();
+        document.querySelectorAll("#itemsBody tr").forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(q) ? "" : "none";
+        });
+    }
+</script>
+</body>
+</html>
