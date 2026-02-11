@@ -50,6 +50,7 @@
     <div class="brand-section">
         <img id="business-logo" src="" alt="Logo">
         <div id="business-name"></div>
+        <div id="business-ntn" style="font-size: 0.9em; color: #555;"></div>
     </div>
 
     <div class="header-flex">
@@ -188,7 +189,9 @@
             // 1. Branding
             const bName = document.getElementById("business-name");
             const bLogo = document.getElementById("business-logo");
+         const bNtn = document.getElementById("business-ntn");
             bName.innerText = user.business || "My Business";
+            bNtn.innerText = user.ntn ? "NTN: " + user.ntn : "";
             if (user.logo && user.logo.trim() !== "") {
                 bLogo.src = user.logo;
                 bLogo.style.display = "block";
