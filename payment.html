@@ -70,6 +70,20 @@
         #receipt-print-area { position: absolute; left: 0; top: 0; width: 100%; }
         .payment-card { display: none; }
     }
+        @media print {
+    /* This removes the margin where the URL and Title are usually placed */
+    @page {
+        margin: 0;
+    }
+    body {
+        /* This adds artificial padding inside the body so the text 
+           doesn't touch the very edge of the paper */
+        padding: 1.5cm;
+    }
+    
+    /* Ensure everything else stays hidden as before */
+    .btn-gen, .delete-btn, .no-print, .btn-search { display: none !important; }
+}
 </style>
 
 <div id="receipt-print-area" style="display:none; background: white; padding: 20px; border: 1px solid #eee; width: 350px; margin: auto; font-family: sans-serif;">
