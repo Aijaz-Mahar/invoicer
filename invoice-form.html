@@ -43,6 +43,20 @@
             .header-flex { background: none; border-bottom: 1px solid #ddd; }
             .payment-input { display: none !important; }
         }
+        @media print {
+    /* This removes the margin where the URL and Title are usually placed */
+    @page {
+        margin: 0;
+    }
+    body {
+        /* This adds artificial padding inside the body so the text 
+           doesn't touch the very edge of the paper */
+        padding: 1.5cm;
+    }
+    
+    /* Ensure everything else stays hidden as before */
+    .btn-gen, .delete-btn, .no-print, .btn-search { display: none !important; }
+}
     </style>
 </head>
 <body>
