@@ -71,7 +71,7 @@
         }
         button:hover { background: #256629; }
 
-        .hidden { display: none; }
+        .hidden { display: none !important; }
         
         .toggle { 
             font-size: 13px; 
@@ -161,7 +161,7 @@
             Name: <b>E. Mahar</b>
         </div>
         <a id="waLink" href="#" target="_blank" class="whatsapp-btn">Send Paid Slip on WhatsApp</a>
-        <p onclick="document.getElementById('activationModal').classList.add('hidden')" style="cursor:pointer; color:#666; font-size:12px; margin-top:15px;">Close & Try Again</p>
+        <button onclick="closeActivationModal()" style="background:#666; margin-top:15px; font-size:14px;">Return to Login</button>
     </div>
 </div>
 
@@ -178,7 +178,6 @@
 // Set Current Year
 document.getElementById('year').innerText = new Date().getFullYear();
 
-// Your logic remains untouched
 const API_URL = "https://script.google.com/macros/s/AKfycbwpyyuTtbSv_2udttbXog8oUfq_vgFvr-y7DggVO-WXYkR4APnpB_0BS6TpSZLdnBrN/exec"; 
 
 let globalLogoBase64 = ""; 
@@ -188,6 +187,13 @@ function toggleForm() {
     document.getElementById('signupFields').classList.toggle('hidden');
     document.getElementById('title').innerText = document.getElementById('loginFields').classList.contains('hidden') ? "eInvoicer Signup" : "eInvoicer Login";
     document.getElementById("msg").innerText = "";
+}
+
+// NEW FUNCTION TO CLOSE MODAL AND RESET
+function closeActivationModal() {
+    document.getElementById('activationModal').classList.add('hidden');
+    document.getElementById("msg").style.color = "blue";
+    document.getElementById("msg").innerText = "Ready for login.";
 }
 
 function previewLogo(input) {
@@ -259,15 +265,9 @@ async function doLogin() {
         const result = await response.json();
         
         if (result.status === "Success") {
-            // Save the main user object
             localStorage.setItem("user", JSON.stringify(result));
-
-            // CRITICAL FIX: Explicitly save clients and items
-            // We use || [] to ensure it's at least an empty list, never 'null'
             localStorage.setItem("clients", JSON.stringify(result.clients || []));
             localStorage.setItem("items", JSON.stringify(result.items || []));
-
-            console.log("Login Data Saved Successfully");
             
             msg.style.color = "green";
             msg.innerText = "✅ Success! Redirecting...";
@@ -275,13 +275,15 @@ async function doLogin() {
                 window.location.href = "dashboard.html";
             }, 1000);
         } else if (result.status === "Expired") {
-            // --- SHOW MODAL INSTEAD OF JUST TEXT ---
+            // Updated to show immediately without refresh
             const waMsg = encodeURIComponent(`Hi, my eInvoicer (${email}) trial expired. I've sent Rs. 1500 to 03002676352 via JazzCash. Here is my paid slip.`);
             document.getElementById('waLink').href = `https://wa.me/923002676352?text=${waMsg}`;
-            document.getElementById('activationModal').classList.remove('hidden');
+            
+            // Forces the modal to display immediately
+            const modal = document.getElementById('activationModal');
+            modal.classList.remove('hidden');
             msg.innerText = "";
         }
-        
         else {
             msg.style.color = "red";
             msg.innerText = "❌ Invalid Credentials";
@@ -293,6 +295,5 @@ async function doLogin() {
     }
 }
 </script>
-
 </body>
 </html>
