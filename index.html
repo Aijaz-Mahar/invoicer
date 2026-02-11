@@ -232,28 +232,39 @@ async function doSignup() {
         logo: globalLogoBase64 
     };
 
-    document.getElementById("msg").style.color = "blue";
-    document.getElementById("msg").innerText = "Registering (creating your database)...";
+    const msg = document.getElementById("msg");
+    msg.style.color = "blue";
+    msg.innerText = "Registering (checking email and creating database)...";
     
     try {
-        await fetch(API_URL, {
+        // We remove mode: "no-cors" to allow reading the error message
+        const response = await fetch(API_URL, {
             method: "POST",
-            mode: "no-cors", 
             body: JSON.stringify(payload)
         });
 
-        document.getElementById("msg").style.color = "green";
-        document.getElementById("msg").innerText = "✅ Signup successful! Please log in.";
-        globalLogoBase64 = "";
-        document.getElementById('logoPreview').innerHTML = "";
-        setTimeout(toggleForm, 2000);
+        const result = await response.text(); // Get the text back from GAS
+
+        if (result === "Success") {
+            msg.style.color = "green";
+            msg.innerText = "✅ Signup successful! Please log in.";
+            globalLogoBase64 = "";
+            document.getElementById('logoPreview').innerHTML = "";
+            setTimeout(toggleForm, 2000);
+        } else if (result.includes("Email already registered")) {
+            msg.style.color = "red";
+            msg.innerText = "❌ This email is already registered. Try logging in.";
+        } else {
+            msg.style.color = "red";
+            msg.innerText = "❌ " + result;
+        }
+
     } catch (err) {
-        document.getElementById("msg").style.color = "red";
-        document.getElementById("msg").innerText = "❌ Error during signup.";
+        msg.style.color = "red";
+        msg.innerText = "❌ Connection Error. Please try again.";
         console.error(err);
     }
 }
-
 async function doLogin() {
     const email = document.getElementById("l_email").value;
     const pass = document.getElementById("l_pass").value;
