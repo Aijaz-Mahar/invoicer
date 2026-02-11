@@ -139,6 +139,7 @@
             <input type="password" id="s_pass" placeholder="Password">
             <input type="text" id="s_phone" placeholder="Phone">
             <input type="text" id="s_biz" placeholder="Business Name">
+            <input type="text" id="s_ntn" placeholder="NTN (Optional)">
             <label style="font-size: 12px; color: #666; margin-top: 10px; display: block; text-align: center;">Upload Business Logo</label>
             <input type="file" id="s_logo" accept="image/*" onchange="previewLogo(this)">
             <div id="logoPreview" style="margin: 5px 0; text-align: center;"></div>
@@ -213,6 +214,7 @@ async function doSignup() {
     const email = document.getElementById("s_email").value;
     const pass = document.getElementById("s_pass").value;
     const biz = document.getElementById("s_biz").value;
+    const ntn = document.getElementById("s_ntn").value; 
 
     if(!name || !email || !pass || !biz) {
         alert("Please fill all required fields");
@@ -226,6 +228,7 @@ async function doSignup() {
         password: pass,
         phone: document.getElementById("s_phone").value,
         business: biz,
+        ntn: ntn,
         logo: globalLogoBase64 
     };
 
