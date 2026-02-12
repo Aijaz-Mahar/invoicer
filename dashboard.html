@@ -349,29 +349,45 @@
     
     loadDashboardStats();
 }
-    async function loadDashboardStats() {
-        const user = JSON.parse(localStorage.getItem("user"));
-        if (!user || !user.sheetId) return;
-        try {
-            const [invRes, cliRes] = await Promise.all([
-                fetch(`${API_URL}?action=getInvoices&sheetId=${user.sheetId}`),
-                fetch(`${API_URL}?action=getClients&sheetId=${user.sheetId}`)
-            ]);
-            const invoices = await invRes.json();
-            const clients = await cliRes.json();
-            if (!Array.isArray(invoices)) return;
-            let totalAmt = 0, totalTax = 0;
-            invoices.forEach(inv => {
-                totalAmt += parseFloat(inv.total) || 0;
-                totalTax += parseFloat(inv.taxAmount) || 0;
-            });
-            document.getElementById("stat-inv").innerText = invoices.length;
-            document.getElementById("stat-cli").innerText = Array.isArray(clients) ? clients.length : 0;
-            document.getElementById("stat-amt").innerText = totalAmt.toFixed(2);
-            document.getElementById("stat-tax").innerText = totalTax.toFixed(2);
-        } catch (e) { console.error("Stats Error:", e); }
-    }
+async function loadDashboardStats() {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user || !user.sheetId) return;
+    
+    try {
+        const [invRes, cliRes] = await Promise.all([
+            fetch(`${API_URL}?action=getInvoices&sheetId=${user.sheetId}`),
+            fetch(`${API_URL}?action=getClients&sheetId=${user.sheetId}`)
+        ]);
+        
+        const invoices = await invRes.json();
+        const clients = await cliRes.json();
+        
+        if (!Array.isArray(invoices)) return;
 
+        let totalAmt = 0, totalTax = 0;
+
+        invoices.forEach(inv => {
+            // We use parseFloat and replace to strip any non-numeric characters (like Currency symbols)
+            // We use the exact key "Total_Amount" from your GAS action=getInvoices
+            const amt = String(inv.Total_Amount || "0").replace(/[^\d.-]/g, '');
+            const tax = String(inv.Tax_Amount || "0").replace(/[^\d.-]/g, '');
+            
+            totalAmt += parseFloat(amt) || 0;
+            totalTax += parseFloat(tax) || 0;
+        });
+
+        // Update the UI
+        document.getElementById("stat-inv").innerText = invoices.length;
+        document.getElementById("stat-cli").innerText = Array.isArray(clients) ? clients.length : 0;
+        
+        // Formats numbers with commas for readability (e.g., 2,500.00)
+        document.getElementById("stat-amt").innerText = totalAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById("stat-tax").innerText = totalTax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        
+    } catch (e) { 
+        console.error("Dashboard Stats Error:", e); 
+    }
+}
     async function savePassword() {
         const oldPass = document.getElementById("oldPass").value;
         const newPass = document.getElementById("newPass").value;
