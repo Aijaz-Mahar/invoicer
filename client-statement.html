@@ -119,7 +119,7 @@
         } catch(e) { console.error("Client Load Error:", e); }
     }
 
-   async function loadLedger() {
+  async function loadLedger() {
         const clientName = document.getElementById("clientSelect").value;
         const tbody = document.getElementById("ledgerBody");
         if(!clientName) return;
@@ -135,15 +135,19 @@
             );
             
             tbody.innerHTML = "";
-            let runningBalance = 0; // STARTING BALANCE
+
+            // --- RUNNING BALANCE LOGIC START ---
+            let runningBalance = 0; 
 
             filtered.forEach(row => {
                 const tr = document.createElement("tr");
+                
+                // 1. Get numeric values of Debit and Credit
                 const dr = parseFloat(row.Debit_Amount || 0);
                 const cr = parseFloat(row.Credit_Amount || 0);
                 
-                // MATH: Previous Balance + New Debt - New Payment
-                runningBalance = runningBalance + dr - cr;
+                // 2. Add Debit (Increase debt), Subtract Credit (Decrease debt)
+                runningBalance += (dr - cr);
 
                 tr.innerHTML = `
                     <td>${row.Date || '---'}</td>
@@ -154,6 +158,7 @@
                 `;
                 tbody.appendChild(tr);
             });
+            // --- RUNNING BALANCE LOGIC END ---
             
             if(filtered.length === 0) {
                 tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>No records found for this client.</td></tr>";
